@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+    <title>Ruby Explorer</title>
+    <link rel="stylesheet"
+	       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/codemirror.min.css"></link>
+
+<script type="text/javascript"
+	      src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/codemirror.min.js"></script>
+
+<script type="text/javascript"
+	src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/ruby/ruby.min.js"></script>
+
+<script type="text/javascript"
+	src="https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@latest/dist/browser.umd.js"></script>
+
+<style>
+ body {
+     color: #363636;
+     font-family: 'Roboto', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+ }
+
+ .tooltip {
+     position: relative;
+     display: inline-block;
+     border-bottom: 1px dotted black;
+ }
+
+ .tooltip .tooltiptext {
+     visibility: hidden;
+     width: 140px;
+     background-color: black;
+     color: #fff;
+     text-align: center;
+     border-radius: 6px;
+     padding: 5px 0;
+
+     /* Position the tooltip */
+     position: absolute;
+     z-index: 1;
+     top: -5px;
+     left: 105%;
+ }
+ .tooltip:hover .tooltiptext {
+     visibility: visible;
+ }
+
+ #container {
+     display: flex;
+     outline: 1px solid #d1d1d1;
+ }
+
+ #code {
+     width: 20%;
+ }
+
+ #flags {
+     width: 20%;
+     padding-left: 15px;
+ }
+
+ .compiler-option {
+     padding: 2px;
+ }
+
+ #result {
+     width: 100%;
+     padding: 10px;
+     border-left: 0.3rem solid #d1d1d1;
+     background-color: #f6f6f6;
+     overflow: scroll;
+     white-space: pre;
+ }
+</style>
+
+<body>
+    <h3 style="padding-left: 40px;">Ruby Explorer</h3>
+
+    <p style="padding-left: 40px; font-size: 10pt;">
+	Share URL: <a id="share-url"></a>
+    </p>
+
+    <div id="container">
+	<div id ="code"></div>
+
+	<div id="result"></div>
+	<div id="flags">
+	    <h4>Compiler Options</h4>
+            <div class="compiler-option">
+                <input type="checkbox" checked="checked" id="inline_const_cache">
+		<label class="label-inline" for="inline_const_cache">inline_const_cache</label>
+            </div>
+            <div class="compiler-option">
+		<input type="checkbox" checked="checked" id="peephole_optimization">
+                <label class="label-inline" for="peephole_optimization">peephole_optimization</label>
+            </div>
+            <div class="compiler-option">
+		<input type="checkbox" id="tailcall_optimization">
+                <label class="label-inline" for="tailcall_optimization">tailcall_optimization</label>
+            </div>
+            <div class="compiler-option">
+		<input type="checkbox" checked="checked" id="specialized_instruction">
+                <label class="label-inline" for="specialized_instruction">specialized_instruction</label>
+            </div>
+            <div class="compiler-option">
+		<input type="checkbox" checked="checked" id="operands_unification">
+                <label class="label-inline" for="operands_unification">operands_unification</label>
+            </div>
+            <div class="compiler-option">
+		<input type="checkbox" id="instructions_unification">
+                <label class="label-inline" for="instructions_unification">instructions_unification</label>
+            </div>
+            <div class="compiler-option">
+		<input type="checkbox" id="stack_caching">
+                <label class="label-inline" for="stack_caching">stack_caching</label>
+            </div>
+            <div class="compiler-option">
+		<input type="checkbox" id="frozen_string_literal">
+                <label class="label-inline" for="frozen_string_literal">frozen_string_literal</label>
+            </div>
+            <div class="compiler-option">
+		<input type="checkbox" id="debug_frozen_string_literal">
+                <label class="label-inline" for="debug_frozen_string_literal">debug_frozen_string_literal</label>
+            </div>
+            <div class="compiler-option">
+		<input type="checkbox" checked="checked" id="coverage_enabled">
+                <label class="label-inline" for="coverage_enabled">coverage_enabled</label>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+ var timeout = null;
+
+ const RUBY_STACK_INFO = {
+     "nop": "0 args (+0,-0)",
+     "getlocal": "2 args (+1,-0)",
+     "setlocal": "2 args (+0,-1)",
+     "getblockparam": "2 args (+1,-0)",
+     "setblockparam": "2 args (+0,-1)",
+     "getblockparamproxy": "2 args (+1,-0)",
+     "getspecial": "2 args (+1,-0)",
+     "setspecial": "1 args (+0,-1)",
+     "getinstancevariable": "2 args (+1,-0)",
+     "setinstancevariable": "2 args (+0,-1)",
+     "getclassvariable": "2 args (+1,-0)",
+     "setclassvariable": "2 args (+0,-1)",
+     "getconstant": "1 args (+1,-2)",
+     "setconstant": "1 args (+0,-2)",
+     "getglobal": "1 args (+1,-0)",
+     "setglobal": "1 args (+0,-1)",
+     "putnil": "0 args (+1,-0)",
+     "putself": "0 args (+1,-0)",
+     "putobject": "1 args (+1,-0)",
+     "putspecialobject": "1 args (+1,-0)",
+     "putstring": "1 args (+1,-0)",
+     "concatstrings": "1 args (+1,-1)",
+     "anytostring": "0 args (+1,-2)",
+     "toregexp": "2 args (+1,-1)",
+     "intern": "0 args (+1,-1)",
+     "newarray": "1 args (+1,-1)",
+     "newarraykwsplat": "1 args (+1,-1)",
+     "duparray": "1 args (+1,-0)",
+     "duphash": "1 args (+1,-0)",
+     "expandarray": "2 args (+1,-2)",
+     "concatarray": "0 args (+1,-2)",
+     "splatarray": "1 args (+1,-1)",
+     "newhash": "1 args (+1,-1)",
+     "newrange": "1 args (+1,-2)",
+     "pop": "0 args (+0,-1)",
+     "dup": "0 args (+2,-1)",
+     "dupn": "1 args (+1,-1)",
+     "swap": "0 args (+2,-2)",
+     "reput": "0 args (+1,-2)",
+     "topn": "1 args (+1,-1)",
+     "setn": "1 args (+1,-2)",
+     "adjuststack": "1 args (+1,-1)",
+     "defined": "3 args (+1,-1)",
+     "checkmatch": "1 args (+1,-2)",
+     "checkkeyword": "2 args (+1,-0)",
+     "checktype": "1 args (+1,-1)",
+     "defineclass": "3 args (+1,-2)",
+     "definemethod": "2 args (+0,-0)",
+     "definesmethod": "2 args (+0,-1)",
+     "opt_send_without_block": "1 args (+1,-1)",
+     "send": "2 args (+1,-1)",
+     "objtostring": "1 args (+1,-1)",
+     "opt_str_freeze": "2 args (+1,-0)",
+     "opt_nil_p": "1 args (+1,-1)",
+     "opt_str_uminus": "2 args (+1,-0)",
+     "opt_newarray_max": "1 args (+1,-1)",
+     "opt_newarray_min": "1 args (+1,-1)",
+     "invokesuper": "2 args (+1,-1)",
+     "invokeblock": "1 args (+1,-1)",
+     "leave": "0 args (+1,-1)",
+     "throw": "1 args (+1,-1)",
+     "jump": "1 args (+0,-0)",
+     "branchif": "1 args (+0,-1)",
+     "branchunless": "1 args (+0,-1)",
+     "branchnil": "1 args (+0,-1)",
+     "opt_getinlinecache": "2 args (+1,-0)",
+     "opt_setinlinecache": "1 args (+1,-1)",
+     "once": "2 args (+1,-0)",
+     "opt_case_dispatch": "2 args (+0,-2)",
+     "opt_plus": "1 args (+1,-2)",
+     "opt_minus": "1 args (+1,-2)",
+     "opt_mult": "1 args (+1,-2)",
+     "opt_div": "1 args (+1,-2)",
+     "opt_mod": "1 args (+1,-2)",
+     "opt_eq": "1 args (+1,-2)",
+     "opt_neq": "2 args (+1,-2)",
+     "opt_lt": "1 args (+1,-2)",
+     "opt_le": "1 args (+1,-2)",
+     "opt_gt": "1 args (+1,-2)",
+     "opt_ge": "1 args (+1,-2)",
+     "opt_ltlt": "1 args (+1,-2)",
+     "opt_and": "1 args (+1,-2)",
+     "opt_or": "1 args (+1,-2)",
+     "opt_aref": "1 args (+1,-2)",
+     "opt_aset": "1 args (+1,-3)",
+     "opt_aset_with": "2 args (+1,-2)",
+     "opt_aref_with": "2 args (+1,-1)",
+     "opt_length": "1 args (+1,-1)",
+     "opt_size": "1 args (+1,-1)",
+     "opt_empty_p": "1 args (+1,-1)",
+     "opt_succ": "1 args (+1,-1)",
+     "opt_not": "1 args (+1,-1)",
+     "opt_regexpmatch": "1 args (+1,-2)",
+     "opt_call_c_function": "1 args (+0,-0)",
+     "invokebuiltin": "1 args (+1,-1)",
+     "opt_invokebuiltin_delegate": "2 args (+1,-0)",
+     "opt_invokebuiltin_delegate_leave": "2 args (+1,-0)",
+     "bitblt": "0 args (+1,-0)",
+     "answer": "0 args (+1,-0)"
+ };
+
+ const infoURLPart = "https://kddnewton.com/yarv/#";
+
+ const defaultProgram = `def foo(bar)
+  bar * bar
+end`;
+
+
+ var startProgram = defaultProgram;
+ const urlParams = new URLSearchParams(window.location.search);
+ var code = urlParams.get('c');
+ if (code) {
+     startProgram = code;
+ }
+
+ if (urlParams.toString() === "") {
+     document.getElementById("share-url").href = window.location.toString();
+     document.getElementById("share-url").innerText = window.location.toString();
+ } else {
+     if (window.location.toString().match(/\?/)) {
+	 document.getElementById("share-url").href = window.location.toString().split(/\?/)[0] + "?" + urlParams;
+	 document.getElementById("share-url").innerText = window.location.toString().split(/\?/)[0] + "?" + urlParams;
+     } else {
+	 document.getElementById("share-url").href = window.location.toString() + "?" + urlParams;
+	 document.getElementById("share-url").innerText = window.location.toString() + "?" + urlParams;
+     }
+ }
+
+ /* document.getElementById("share-url").href = window.location.href + urlParams;
+  * document.getElementById("share-url").innerText = window.location.href + urlParams; */
+
+ window.Editor = new CodeMirror(document.querySelector('#code'), {
+     lineNumbers: true,
+     tabSize: 2,
+     value: startProgram
+ });
+
+ const { DefaultRubyVM } = window["ruby-wasm-wasi"];
+ const main = async () => {
+     // Fetch and instantiate WebAssembly binary
+     const response = await fetch(
+         //      Tips: Replace the binary with debug info if you want symbolicated stack trace.
+         //      (only nightly release for now)
+         //      "https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@next/dist/ruby.debug+stdlib.wasm"
+		     "https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@latest/dist/ruby.wasm"
+ );
+ const buffer = await response.arrayBuffer();
+     const module = await WebAssembly.compile(buffer);
+     const { vm } = await DefaultRubyVM(module);
+
+     window.VM = vm;
+
+     const compileFunc = function() {
+	 const compilerArgs = `
+  inline_const_cache: ${document.getElementById("inline_const_cache").checked ? 'true' : 'false' },
+  peephole_optimization: ${document.getElementById("peephole_optimization").checked ? 'true' : 'false' },
+  tailcall_optimization: ${document.getElementById("tailcall_optimization").checked ? 'true' : 'false' },
+  specialized_instruction: ${document.getElementById("specialized_instruction").checked ? 'true' : 'false' },
+  operands_unification: ${document.getElementById("operands_unification").checked ? 'true' : 'false' },
+  instructions_unification: ${document.getElementById("instructions_unification").checked ? 'true' : 'false' },
+  stack_caching: ${document.getElementById("stack_caching").checked ? 'true' : 'false' },
+  frozen_string_literal: ${document.getElementById("frozen_string_literal").checked ? 'true' : 'false' },
+  debug_frozen_string_literal: ${document.getElementById("debug_frozen_string_literal").checked ? 'true' : 'false' },
+  coverage_enabled: ${document.getElementById("coverage_enabled").checked ? 'true' : 'false' },`;
+
+         // document.getElementById("output").value = vm.eval(window.Editor.getValue())
+	 var insns;
+	 try {
+	     insns = vm.eval("RubyVM::InstructionSequence.compile('" + window.Editor.getValue() + "', " + compilerArgs + ").disassemble").toString();
+	 }
+	 catch(err) {
+             document.getElementById("result").innerHTML = err.message;
+	     return;
+	 }
+
+	 const res = document.getElementById("result");
+	 res.innerHTML = '';
+
+
+	 const formattedInsns = insns.split(/\n/).map((line) => {
+	     var replaced = false;
+
+	     Object.keys(RUBY_STACK_INFO).find((instructionOp) => {
+		 if (line.match(instructionOp)) {
+		     replaced = true;
+		     const tooltipDiv = document.createElement("div");
+		     tooltipDiv.classList.add("tooltip");
+
+		     const link = document.createElement("a");
+		     link.href = (infoURLPart + instructionOp.replaceAll("_", ""));
+		     link.innerText = instructionOp;
+
+		     const tooltipText = document.createElement("span");
+		     tooltipText.classList.add("tooltiptext");
+		     tooltipText.innerText = RUBY_STACK_INFO[instructionOp];
+
+		     const pre = document.createTextNode(line.split(instructionOp)[0]);
+		     res.appendChild(pre);
+
+		     tooltipDiv.appendChild(link);
+		     tooltipDiv.appendChild(tooltipText);
+		     res.appendChild(tooltipDiv);
+
+		     const post = document.createTextNode(line.split(instructionOp)[1] + "\n");
+		     res.appendChild(post);
+
+		     return true;
+		 }
+		 return false;
+	     });
+
+	     if (replaced === false) {
+		 const textnode = document.createTextNode(line + "\n");
+		 res.appendChild(textnode);
+	     }
+	     /* const linebreak = document.createElement("br");
+		res.appendChild(linebreak); */
+
+	 });
+
+	 const urlParams = new URLSearchParams(window.location.search);
+	 var curCode = window.Editor.getValue()
+	 urlParams.set('c', curCode);
+	 if (curCode != startProgram) {
+	     if (window.location.toString().match(/\?/)) {
+		 document.getElementById("share-url").href = window.location.toString().split(/\?/)[0] + "?" + urlParams;
+		 document.getElementById("share-url").innerText = window.location.toString().split(/\?/)[0] + "?" + urlParams;
+	     } else {
+		 document.getElementById("share-url").href = window.location.toString() + "?" + urlParams;
+		 document.getElementById("share-url").innerText = window.location.toString() + "?" + urlParams;
+	     }
+
+	     startProgram = curCode;
+	 }
+	 /* document.getElementById("result").innerText = formattedInsns; */
+     };
+
+     window.Editor.on('changes', () => {
+	 clearTimeout(timeout);
+	 timeout = setTimeout(compileFunc, 600);
+     });
+     compileFunc();
+ };
+
+	 main();
+</script>
+</html>

@@ -11,18 +11,24 @@
 	src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/ruby/ruby.min.js"></script>
 
 <script type="text/javascript"
-	src="https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@latest/dist/browser.umd.js"></script>
+	      src="https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@latest/dist/browser.umd.js"></script>
 
 <style>
  body {
      color: #363636;
-     font-family: 'Roboto', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+     font-family: monospace;
+     margin: 20px;
+ }
+
+ a {
+     color: #009aff;
+     text-decoration: none;
  }
 
  .tooltip {
      position: relative;
      display: inline-block;
-     border-bottom: 1px dotted black;
+     border-bottom: 1px dotted  #F1F1F1;
  }
 
  .tooltip .tooltiptext {
@@ -34,7 +40,6 @@
      border-radius: 6px;
      padding: 5px 0;
 
-     /* Position the tooltip */
      position: absolute;
      z-index: 1;
      top: -5px;
@@ -44,7 +49,7 @@
      visibility: visible;
  }
 
- #container {
+ .container {
      display: flex;
      outline: 1px solid #d1d1d1;
  }
@@ -54,78 +59,124 @@
  }
 
  #flags {
-     width: 20%;
+     display: flex-wrap;
      padding-left: 15px;
+     padding-bottom: 15px;
  }
 
  .compiler-option {
+     width: 400px;
+     display: inline-block;
      padding: 2px;
  }
 
  #result {
      width: 100%;
      padding: 10px;
-     border-left: 0.3rem solid #d1d1d1;
+
      background-color: #f6f6f6;
      overflow: scroll;
      white-space: pre;
  }
+
+ .status-working {
+     border-left: 0.3rem solid #d1d1d1;
+ }
+
+ .status-success {
+     border-left: 0.3rem solid #BCE29E;
+ }
+
+ .status-failure {
+     border-left: 0.3rem solid #FF8787;
+ }
+
+ .button {
+     display: inline-block;
+     outline: 0;
+     cursor: pointer;
+     padding: 6px 10px;
+     vertical-align: middle;
+     border: 1px solid;
+     border-radius: 6px;
+     color: #24292e;
+     background-color: #fafbfc;
+     border-color: #1b1f2326;
+     transition: 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+     transition-property: color, background-color, border-color;
+ }
+
+ .button:hover {
+     background-color: #f3f4f6;
+     border-color: #1b1f2326;
+     transition-duration: 0.1s;
+ }
+
+ #share-url {
+     width: 90%;
+     font-size: 10pt;
+     padding: 4px;
+     display: inline-block;
+ }
 </style>
 
 <body>
-    <h3 style="padding-left: 40px;">Ruby Explorer</h3>
+    <h3>Ruby Explorer</h3>
 
-    <p style="padding-left: 40px; font-size: 10pt;">
-	Share URL: <a id="share-url"></a>
-    </p>
+    <div style="margin-bottom: 20px;">
+	Share Link:
+	<input type="text" id="share-url">
+    </div>
 
-    <div id="container">
+    <h4>Compiler Options</h4>
+    <div id="flags">
+      <div class="compiler-option">
+        <input type="checkbox" class="compiler_toggle" checked="checked" id="inline_const_cache">
+	<label class="label-inline" for="inline_const_cache">inline_const_cache</label>
+      </div>
+      <div class="compiler-option">
+	<input type="checkbox" class="compiler_toggle" checked="checked" id="peephole_optimization">
+        <label class="label-inline" for="peephole_optimization">peephole_optimization</label>
+      </div>
+      <div class="compiler-option">
+	<input type="checkbox" class="compiler_toggle" id="tailcall_optimization">
+        <label class="label-inline" for="tailcall_optimization">tailcall_optimization</label>
+      </div>
+      <div class="compiler-option">
+	<input type="checkbox" class="compiler_toggle" checked="checked" id="specialized_instruction">
+        <label class="label-inline" for="specialized_instruction">specialized_instruction</label>
+      </div>
+      <div class="compiler-option">
+	<input type="checkbox" class="compiler_toggle" checked="checked" id="operands_unification">
+        <label class="label-inline" for="operands_unification">operands_unification</label>
+      </div>
+      <div class="compiler-option">
+	<input type="checkbox" class="compiler_toggle" id="instructions_unification">
+        <label class="label-inline" for="instructions_unification">instructions_unification</label>
+      </div>
+      <div class="compiler-option">
+	<input type="checkbox" class="compiler_toggle" id="stack_caching">
+        <label class="label-inline" for="stack_caching">stack_caching</label>
+      </div>
+      <div class="compiler-option">
+	<input type="checkbox" class="compiler_toggle" id="frozen_string_literal">
+        <label class="label-inline" for="frozen_string_literal">frozen_string_literal</label>
+      </div>
+      <div class="compiler-option">
+	<input type="checkbox" class="compiler_toggle" id="debug_frozen_string_literal">
+        <label class="label-inline" for="debug_frozen_string_literal">debug_frozen_string_literal</label>
+      </div>
+      <div class="compiler-option">
+	<input type="checkbox" class="compiler_toggle" checked="checked" id="coverage_enabled">
+        <label class="label-inline" for="coverage_enabled">coverage_enabled</label>
+      </div>
+    </div>
+
+    <h4>Code & Instructions</h4>
+    <div class="container">
 	<div id ="code"></div>
 
 	<div id="result"></div>
-	<div id="flags">
-	    <h4>Compiler Options</h4>
-            <div class="compiler-option">
-                <input type="checkbox" checked="checked" id="inline_const_cache">
-		<label class="label-inline" for="inline_const_cache">inline_const_cache</label>
-            </div>
-            <div class="compiler-option">
-		<input type="checkbox" checked="checked" id="peephole_optimization">
-                <label class="label-inline" for="peephole_optimization">peephole_optimization</label>
-            </div>
-            <div class="compiler-option">
-		<input type="checkbox" id="tailcall_optimization">
-                <label class="label-inline" for="tailcall_optimization">tailcall_optimization</label>
-            </div>
-            <div class="compiler-option">
-		<input type="checkbox" checked="checked" id="specialized_instruction">
-                <label class="label-inline" for="specialized_instruction">specialized_instruction</label>
-            </div>
-            <div class="compiler-option">
-		<input type="checkbox" checked="checked" id="operands_unification">
-                <label class="label-inline" for="operands_unification">operands_unification</label>
-            </div>
-            <div class="compiler-option">
-		<input type="checkbox" id="instructions_unification">
-                <label class="label-inline" for="instructions_unification">instructions_unification</label>
-            </div>
-            <div class="compiler-option">
-		<input type="checkbox" id="stack_caching">
-                <label class="label-inline" for="stack_caching">stack_caching</label>
-            </div>
-            <div class="compiler-option">
-		<input type="checkbox" id="frozen_string_literal">
-                <label class="label-inline" for="frozen_string_literal">frozen_string_literal</label>
-            </div>
-            <div class="compiler-option">
-		<input type="checkbox" id="debug_frozen_string_literal">
-                <label class="label-inline" for="debug_frozen_string_literal">debug_frozen_string_literal</label>
-            </div>
-            <div class="compiler-option">
-		<input type="checkbox" checked="checked" id="coverage_enabled">
-                <label class="label-inline" for="coverage_enabled">coverage_enabled</label>
-            </div>
-        </div>
     </div>
 </body>
 
@@ -248,21 +299,17 @@ end`;
      startProgram = code;
  }
 
+ const shareInput = document.getElementById("share-url");
+
  if (urlParams.toString() === "") {
-     document.getElementById("share-url").href = window.location.toString();
-     document.getElementById("share-url").innerText = window.location.toString();
+     shareInput.value = window.location.toString();
  } else {
      if (window.location.toString().match(/\?/)) {
-	 document.getElementById("share-url").href = window.location.toString().split(/\?/)[0] + "?" + urlParams;
-	 document.getElementById("share-url").innerText = window.location.toString().split(/\?/)[0] + "?" + urlParams;
+	 shareInput.value = window.location.toString().split(/\?/)[0] + "?" + urlParams;
      } else {
-	 document.getElementById("share-url").href = window.location.toString() + "?" + urlParams;
-	 document.getElementById("share-url").innerText = window.location.toString() + "?" + urlParams;
+	 shareInput.value = window.location.toString() + "?" + urlParams;
      }
  }
-
- /* document.getElementById("share-url").href = window.location.href + urlParams;
-  * document.getElementById("share-url").innerText = window.location.href + urlParams; */
 
  window.Editor = new CodeMirror(document.querySelector('#code'), {
      lineNumbers: true,
@@ -272,14 +319,8 @@ end`;
 
  const { DefaultRubyVM } = window["ruby-wasm-wasi"];
  const main = async () => {
-     // Fetch and instantiate WebAssembly binary
-     const response = await fetch(
-         //      Tips: Replace the binary with debug info if you want symbolicated stack trace.
-         //      (only nightly release for now)
-         //      "https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@next/dist/ruby.debug+stdlib.wasm"
-		     "https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@latest/dist/ruby.wasm"
- );
- const buffer = await response.arrayBuffer();
+     const response = await fetch("https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@latest/dist/ruby.wasm");
+     const buffer = await response.arrayBuffer();
      const module = await WebAssembly.compile(buffer);
      const { vm } = await DefaultRubyVM(module);
 
@@ -298,19 +339,37 @@ end`;
   debug_frozen_string_literal: ${document.getElementById("debug_frozen_string_literal").checked ? 'true' : 'false' },
   coverage_enabled: ${document.getElementById("coverage_enabled").checked ? 'true' : 'false' },`;
 
-         // document.getElementById("output").value = vm.eval(window.Editor.getValue())
+	 const resultDiv = document.getElementById("result");
+	 const urlParams = new URLSearchParams(window.location.search);
+	 var curCode = window.Editor.getValue()
+	 urlParams.set('c', curCode);
+	 if (curCode != startProgram) {
+	     if (window.location.toString().match(/\?/)) {
+		 shareInput.value = window.location.toString().split(/\?/)[0] + "?" + urlParams;
+	     } else {
+		 shareInput.value = window.location.toString() + "?" + urlParams;
+	     }
+	     startProgram = curCode;
+	 }
+
 	 var insns;
 	 try {
 	     insns = vm.eval("RubyVM::InstructionSequence.compile('" + window.Editor.getValue() + "', " + compilerArgs + ").disassemble").toString();
 	 }
 	 catch(err) {
-             document.getElementById("result").innerHTML = err.message;
+	     resultDiv.classList.remove("status-success");
+	     resultDiv.classList.remove("status-working");
+	     resultDiv.classList.add("status-failure");
+	     resultDiv.innerHTML = '';
+             resultDiv.innerText = err.message;
 	     return;
 	 }
 
-	 const res = document.getElementById("result");
-	 res.innerHTML = '';
+	 resultDiv.innerHTML = '';
 
+	 resultDiv.classList.remove("status-working");
+	 resultDiv.classList.remove("status-failure");
+	 resultDiv.classList.add("status-success");
 
 	 const formattedInsns = insns.split(/\n/).map((line) => {
 	     var replaced = false;
@@ -330,14 +389,14 @@ end`;
 		     tooltipText.innerText = RUBY_STACK_INFO[instructionOp];
 
 		     const pre = document.createTextNode(line.split(instructionOp)[0]);
-		     res.appendChild(pre);
+		     resultDiv.appendChild(pre);
 
 		     tooltipDiv.appendChild(link);
 		     tooltipDiv.appendChild(tooltipText);
-		     res.appendChild(tooltipDiv);
+		     resultDiv.appendChild(tooltipDiv);
 
 		     const post = document.createTextNode(line.split(instructionOp)[1] + "\n");
-		     res.appendChild(post);
+		     resultDiv.appendChild(post);
 
 		     return true;
 		 }
@@ -346,33 +405,20 @@ end`;
 
 	     if (replaced === false) {
 		 const textnode = document.createTextNode(line + "\n");
-		 res.appendChild(textnode);
+		 resultDiv.appendChild(textnode);
 	     }
-	     /* const linebreak = document.createElement("br");
-		res.appendChild(linebreak); */
-
 	 });
-
-	 const urlParams = new URLSearchParams(window.location.search);
-	 var curCode = window.Editor.getValue()
-	 urlParams.set('c', curCode);
-	 if (curCode != startProgram) {
-	     if (window.location.toString().match(/\?/)) {
-		 document.getElementById("share-url").href = window.location.toString().split(/\?/)[0] + "?" + urlParams;
-		 document.getElementById("share-url").innerText = window.location.toString().split(/\?/)[0] + "?" + urlParams;
-	     } else {
-		 document.getElementById("share-url").href = window.location.toString() + "?" + urlParams;
-		 document.getElementById("share-url").innerText = window.location.toString() + "?" + urlParams;
-	     }
-
-	     startProgram = curCode;
-	 }
-	 /* document.getElementById("result").innerText = formattedInsns; */
      };
 
      window.Editor.on('changes', () => {
 	 clearTimeout(timeout);
-	 timeout = setTimeout(compileFunc, 600);
+	 timeout = setTimeout(compileFunc, 30);
+     });
+
+     Array.from(document.getElementsByClassName("compiler_toggle")).forEach((ct) => {
+	 ct.addEventListener('change', (event) => {
+	     compileFunc();
+	 });
      });
      compileFunc();
  };

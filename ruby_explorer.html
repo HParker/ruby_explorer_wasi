@@ -356,7 +356,7 @@ end`;
 
          const rubyCode = `
 RubyVM::InstructionSequence.compile(<<SUPER_SECRET_HEREDOC, ${compilerArgs}).disassemble
-${window.Editor.getValue()}
+${window.Editor.getValue().replace("\\", "\\\\")}
 SUPER_SECRET_HEREDOC`;
 
 	 try {

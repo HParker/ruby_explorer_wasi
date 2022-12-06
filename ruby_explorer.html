@@ -355,8 +355,8 @@ end`;
 	 var insns;
 
          const rubyCode = `
-RubyVM::InstructionSequence.compile(<<SUPER_SECRET_HEREDOC, ${compilerArgs}).disassemble
-${window.Editor.getValue().replace("\\", "\\\\")}
+RubyVM::InstructionSequence.compile(<<'SUPER_SECRET_HEREDOC', ${compilerArgs}).disassemble
+${window.Editor.getValue()}
 SUPER_SECRET_HEREDOC`;
 
 	 try {

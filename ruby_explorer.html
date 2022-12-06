@@ -337,7 +337,7 @@ end`;
   stack_caching: ${document.getElementById("stack_caching").checked ? 'true' : 'false' },
   frozen_string_literal: ${document.getElementById("frozen_string_literal").checked ? 'true' : 'false' },
   debug_frozen_string_literal: ${document.getElementById("debug_frozen_string_literal").checked ? 'true' : 'false' },
-  coverage_enabled: ${document.getElementById("coverage_enabled").checked ? 'true' : 'false' },`;
+  coverage_enabled: ${document.getElementById("coverage_enabled").checked ? 'true' : 'false' }`.replaceAll("\n", " ");
 
 	 const resultDiv = document.getElementById("result");
 	 const urlParams = new URLSearchParams(window.location.search);
@@ -353,8 +353,14 @@ end`;
 	 }
 
 	 var insns;
+
+         const rubyCode = `
+RubyVM::InstructionSequence.compile(<<SUPER_SECRET_HEREDOC, ${compilerArgs}).disassemble
+${window.Editor.getValue()}
+SUPER_SECRET_HEREDOC`;
+
 	 try {
-	     insns = vm.eval("RubyVM::InstructionSequence.compile('" + window.Editor.getValue() + "', " + compilerArgs + ").disassemble").toString();
+	     insns = vm.eval(rubyCode).toString();
 	 }
 	 catch(err) {
 	     resultDiv.classList.remove("status-success");

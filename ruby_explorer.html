@@ -118,6 +118,11 @@
      padding: 4px;
      display: inline-block;
  }
+
+ .result-div {
+     width: 50%;
+     margin: 20px;
+ }
 </style>
 
 <body>
@@ -174,9 +179,23 @@
 
     <h4>Code & Instructions</h4>
     <div class="container">
-	<div id ="code"></div>
+	<div id="code"></div>
 
 	<div id="result"></div>
+    </div>
+
+    <div class="container">
+        <div class="result-div">
+            <h4>Result</h4>
+            <div id="eval-result">
+            </div>
+        </div>
+
+        <div class="result-div">
+            <h4>stdout</h4>
+            <div id="stdout">
+            </div>
+        </div>
     </div>
 </body>
 
@@ -287,9 +306,13 @@
 
  const infoURLPart = "https://kddnewton.com/yarv/#";
 
- const defaultProgram = `def foo(bar)
-  bar * bar
-end`;
+ const defaultProgram = `def greet(name)
+  puts "hello #{name}"
+end
+
+greet("World")
+
+123 * 456`;
 
 
  var startProgram = defaultProgram;
@@ -318,10 +341,12 @@ end`;
  });
 
  const { DefaultRubyVM } = window["ruby-wasm-wasi"];
+ window.DRVM = DefaultRubyVM;
  const main = async () => {
-     const response = await fetch("https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@latest/dist/ruby.wasm");
+     const response = await fetch("https://cdn.jsdelivr.net/npm/ruby-head-wasm-wasi@latest/dist/ruby+stdlib.wasm");
      const buffer = await response.arrayBuffer();
      const module = await WebAssembly.compile(buffer);
+     window.rubyMod = module;
      const { vm } = await DefaultRubyVM(module);
 
      window.VM = vm;
@@ -414,7 +439,34 @@ SUPER_SECRET_HEREDOC`;
 		 resultDiv.appendChild(textnode);
 	     }
 	 });
+
+         // result & stdout
+         const run_in_fresh_vm = async () => {
+             const { vm } = await DefaultRubyVM(module);
+
+             // capture result and stdout
+             const enable_tracing = vm.eval(`
+require 'stringio'
+$stdout = StringIO.new
+             `);
+
+             try {
+                 const result = vm.eval(window.Editor.getValue());
+                 const stdout = vm.eval(`$stdout.string`);
+                 document.getElementById("eval-result").innerText = result;
+                 document.getElementById("stdout").innerText = stdout;
+             }
+	     catch(err) {
+                 // error messages are handled above
+                 document.getElementById("eval-result").innerText = "";
+                 document.getElementById("stdout").innerText = "";
+	     }
+
+         }
+         run_in_fresh_vm();
      };
+
+
 
      window.Editor.on('changes', () => {
 	 clearTimeout(timeout);

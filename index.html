@@ -380,9 +380,10 @@ greet("World")
 	 var insns;
 
          const rubyCode = `
-RubyVM::InstructionSequence.compile(<<'SUPER_SECRET_HEREDOC', ${compilerArgs}).disassemble
+code = <<'SUPER_SECRET_HEREDOC'
 ${window.Editor.getValue()}
-SUPER_SECRET_HEREDOC`;
+SUPER_SECRET_HEREDOC
+RubyVM::InstructionSequence.compile(code, ${compilerArgs}).disassemble`;
 
 	 try {
 	     insns = vm.eval(rubyCode).toString();
